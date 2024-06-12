@@ -70,7 +70,7 @@ jobs:
         key: ${{secrets.SSH_KEY}}
         passphrase: ${{secrets.SSH_PASSPHRASE}}
         script: |
-          cd /deploy/coinmarketcapbot
+          cd /deploy/coinmarketcap_bot
           sudo docker compose down --rmi all
           cp -rf upload/. .
           echo "TELEGRAM_TOKEN=${{secrets.TELEGRAM_TOKEN}}" > .env
