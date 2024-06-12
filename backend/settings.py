@@ -9,6 +9,8 @@ load_dotenv()
 
 LOG_LEVEL = logging.INFO
 
+JOB_INTERVAL = 10.0
+
 CLIENT_MAX_PER_SECOND = 3
 CLIENT_MAX_PER_MINUTE = 100
 
