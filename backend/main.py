@@ -1,8 +1,7 @@
 import logging
 
 from backend.bot import (
-    build_bot_application,
-    run_bot_application,
+    run_bot,
 )
 from backend import settings
 
@@ -17,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    application = build_bot_application()
-    run_bot_application(application)
+    run_bot()
 
 
 if __name__ == '__main__':

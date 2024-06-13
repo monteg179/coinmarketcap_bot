@@ -10,6 +10,9 @@ from telegram.ext import (
     JobQueue,
 )
 
+from backend.coinmarketcap import (
+    coin_market_cap_client,
+)
 from backend import settings
 
 logger = logging.getLogger(__name__)
@@ -21,6 +24,7 @@ WEBHOOK_URL = settings.enviroment.webhook_url
 WEBHOOK_SECRET = settings.enviroment.webhook_secret
 WEBHOOK_PATH = settings.enviroment.webhook_path
 WEBHOOK_CERT = settings.enviroment.webhook_cert
+COIN_MARKET_CAP_INTERVAL = settings.COIN_MARKET_CAP_INTERVAL
 JOB_INTERVAL = settings.JOB_INTERVAL
 
 
@@ -33,12 +37,15 @@ class BotJob:
 
     def __init__(self, user_id: int, args: list[str]) -> None:
         self.__user_id = user_id
-        self.__coin = args[0]
+        self.__coin = args[0].upper()
         self.__low = float(args[1])
         self.__high = float(args[2])
         self.__name = (f'{self.__user_id} - {self.__coin} - '
                        f'{self.__low} - {self.__high}')
         self.__title = f'{self.__coin.upper()}[{self.__low}, {self.__high}]'
+
+    def __str__(self) -> str:
+        return self.__title
 
     @property
     def name(self) -> str:
@@ -65,7 +72,7 @@ class BotJob:
         return self.__high
 
 
-def remove_job_from_queue(name: str, queue: JobQueue) -> str:
+def remove_job_from_queue(name: str, queue: JobQueue) -> str | None:
     jobs = queue.get_jobs_by_name(name)
     if jobs:
         for job in jobs:
@@ -79,13 +86,21 @@ def remove_job_from_queue(name: str, queue: JobQueue) -> str:
         )
 
 
+async def coin_market_cap_callback(
+    context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    await coin_market_cap_client.cryptocurrency()
+
+
 async def jobs_callback(context: ContextTypes.DEFAULT_TYPE) -> None:
     job = context.job.data
     if isinstance(job, BotJob):
-        await context.bot.send_message(
-            chat_id=context.job.chat_id,
-            text=job.title
-        )
+        price = coin_market_cap_client.prices.get(job.coin)
+        if isinstance(price, float) and (price < job.low or price > job.high):
+            await context.bot.send_message(
+                chat_id=context.job.chat_id,
+                text=f'{job.title}:\n{price:.4f}'
+            )
 
 
 async def add_command_handler(
@@ -162,11 +177,45 @@ async def list_command_handler(
     )
 
 
-def build_bot_application() -> Application:
+async def coins_command_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    chat_id = update.effective_chat.id
+    coins = [
+        f'{key}: {value}'
+        for key, value in coin_market_cap_client.coins.items()
+    ]
+    message = 'Coins list:\n' + '\n'.join(coins)
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=message
+    )
+
+
+async def prices_command_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    chat_id = update.effective_chat.id
+    prices = [
+        f'{key}: {value:.4f}'
+        for key, value in coin_market_cap_client.prices.items()
+    ]
+    message = 'Prices list:\n' + '\n'.join(prices)
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=message
+    )
+
+
+def run_bot() -> None:
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-    # app.add_handler(
-    #     CommandHandler('start', start_command_handler)
-    # )
+    app.job_queue.run_repeating(
+        callback=coin_market_cap_callback,
+        interval=COIN_MARKET_CAP_INTERVAL,
+        first=1.0
+    )
     app.add_handler(
         CommandHandler('add', add_command_handler)
     )
@@ -176,10 +225,12 @@ def build_bot_application() -> Application:
     app.add_handler(
         CommandHandler('list', list_command_handler)
     )
-    return app
-
-
-def run_bot_application(app: Application) -> None:
+    app.add_handler(
+        CommandHandler('coins', coins_command_handler)
+    )
+    app.add_handler(
+        CommandHandler('prices', prices_command_handler)
+    )
     if all([WEBHOOK_PORT, WEBHOOK_URL, WEBHOOK_CERT]):
         app.run_webhook(
             listen='0.0.0.0',
@@ -188,6 +239,10 @@ def run_bot_application(app: Application) -> None:
             url_path=WEBHOOK_PATH,
             webhook_url=WEBHOOK_URL,
             cert=WEBHOOK_CERT,
+            drop_pending_updates=True
         )
     else:
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
+        app.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True
+        )

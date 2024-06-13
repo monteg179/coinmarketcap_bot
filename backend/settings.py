@@ -5,14 +5,10 @@ from dotenv import (
     load_dotenv,
 )
 
-load_dotenv()
-
 LOG_LEVEL = logging.INFO
 
-JOB_INTERVAL = 10.0
-
-CLIENT_MAX_PER_SECOND = 3
-CLIENT_MAX_PER_MINUTE = 100
+JOB_INTERVAL = 900.0
+COIN_MARKET_CAP_INTERVAL = 300.0
 
 
 class Enviroment:
@@ -23,15 +19,17 @@ class Enviroment:
     WEBHOOK_SECRET = 'WEBHOOK_SECRET'
     WEBHOOK_PATH = 'WEBHOOK_PATH'
     WEBHOOK_CERT = 'WEBHOOK_CERT'
-    WEBHOOK_KEY = 'WEBHOOK_KEY'
+    COIN_MARKET_CAP = 'COIN_MARKET_CAP'
 
     def __init__(self) -> None:
+        load_dotenv()
         self.__telegram_token = os.getenv(type(self).TELEGRAM_TOKEN)
         self.__webhook_port = int(os.getenv(type(self).WEBHOOK_PORT, 0))
         self.__webhook_url = os.getenv(type(self).WEBHOOK_URL)
         self.__webhook_secret = os.getenv(type(self).WEBHOOK_SECRET)
         self.__webhook_path = os.getenv(type(self).WEBHOOK_PATH, '')
         self.__webhook_cert = os.getenv(type(self).WEBHOOK_CERT)
+        self.__coin_market_cap = os.getenv(type(self).COIN_MARKET_CAP)
 
     @property
     def telegram_token(self) -> str:
@@ -56,6 +54,10 @@ class Enviroment:
     @property
     def webhook_cert(self) -> str | None:
         return self.__webhook_cert
+
+    @property
+    def coin_market_cap(self) -> str:
+        return self.__coin_market_cap
 
 
 enviroment = Enviroment()
