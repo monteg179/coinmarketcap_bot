@@ -79,4 +79,5 @@ jobs:
           echo "WEBHOOK_PORT=${{secrets.TELEGRAM_WEBHOOK_PORT}}" >> .env
           echo "WEBHOOK_PATH=${{secrets.TELEGRAM_WEBHOOK_PATH}}" >> .env
           echo "WEBHOOK_CERT=${{secrets.TELEGRAM_WEBHOOK_CERT}}" >> .env
+          echo "COIN_MARKET_CAP=${{secrets.COIN_MARKET_CAP}}" >> .env
           sudo bash setup.sh deploy
